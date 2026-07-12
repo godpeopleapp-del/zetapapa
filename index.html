@@ -191,9 +191,39 @@ function updateField(inputElement) {
   }
 }
 
-window.addEventListener('message', function(e){
-  if (!e.data || e.data.type !== 'CHUCHUMON_UPDATE') return;
-  applyToPreview(e.data.data);
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+
+  // [규칙 2] 플랫폼 브로커 → 미리보기 iframe: 실시간 DOM 업데이트
+  if (e.data.type === 'CHUCHUMON_UPDATE') {
+    applyToPreview(e.data.data);
+    return;
+  }
+
+  // [규칙 6] 플랫폼 → 편집 패널 iframe: 재진입 시 입력값 복원
+  //   플랫폼이 onLoad 후 50ms 뒤에 이 메시지를 전송합니다.
+  //   data 객체의 각 key를 name 속성으로 찾아 input 값을 복원합니다.
+  if (e.data.type === 'CHUCHUMON_RESTORE') {
+    var savedData = e.data.data;
+    if (!savedData) return;
+    Object.keys(savedData).forEach(function(key) {
+      var input = document.querySelector('[name="' + key + '"]');
+      if (!input) return;
+      if (input.type === 'checkbox') {
+        input.checked = !!savedData[key];
+        if (savedData[key]) {
+          input.setAttribute('checked', 'checked');
+        } else {
+          input.removeAttribute('checked');
+        }
+      } else {
+        input.value = savedData[key];
+        input.setAttribute('value', savedData[key]);
+      }
+      templateData[key] = savedData[key];
+    });
+    return;
+  }
 });
 
 function applyToPreview(data) {
